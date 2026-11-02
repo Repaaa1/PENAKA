@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Taruh di app/src/main/res/values/splash_theme.xml (timpa yang lama) -->
+<resources>
+
+    <!-- Tema game: TANPA ActionBar. Penyebab judul proyek ("tesProjek") menutupi bagian atas layar
+         adalah tema yang masih membawa ActionBar. -->
+    <style name="Theme.Penaka.Game" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#D6E6FA</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Tema awal (splash sistem): satu warna langit, tanpa ikon, lalu pindah ke Theme.Penaka.Game -->
+    <style name="Theme.Penaka.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#D6E6FA</item>
+        <item name="windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="postSplashScreenTheme">@style/Theme.Penaka.Game</item>
+    </style>
+
+</resources>
