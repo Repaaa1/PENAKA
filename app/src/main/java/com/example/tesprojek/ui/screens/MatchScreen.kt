@@ -1,53 +1,85 @@
 package com.example.tesprojek.ui.screens
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.tesprojek.ui.components.BouncyButton
-import com.example.tesprojek.ui.components.GameBackground
+import androidx.compose.ui.zIndex
+import com.example.tesprojek.ui.components.ClickSound
 import com.example.tesprojek.ui.components.LearnItem
 import com.example.tesprojek.ui.components.LearnKind
 import com.example.tesprojek.ui.components.PenakaTopBar
-import com.example.tesprojek.ui.components.SwayingGrass
-import com.example.tesprojek.ui.theme.OutlineBrown
+import com.example.tesprojek.ui.components.ScreenVoice
+import com.example.tesprojek.ui.components.VoiceOver
 import com.example.tesprojek.ui.theme.SkyBlue
+import com.example.tesprojek.ui.components.GameBackground
+import com.example.tesprojek.ui.components.SwayingGrass
+import com.example.tesprojek.ui.screens.Clouds
+import com.example.tesprojek.ui.screens.DriftingCloud
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
-private val MatchCardOutline = Color(0xFF8A5A2B)
-private val MatchPillFill = Color(0xFFFFF8D6)
-private val MatchPillOutline = Color(0xFF4A3426)
-private val ChipFill = Color(0xFFFFECC8)
+private val MatchCorrect = Color(0xFF6BB84A)
+private val MatchWrong = Color(0xFFE8402F)
+private val NumberWords = listOf("satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh")
+private val ChipFallbackColors = listOf(Color(0xFFE8402F), Color(0xFF2EA8E0), Color(0xFFF27BB0))
 
+/** Satu ronde = satu item; setelah ronde terakhir halaman skor dibuka. Pilihan: jawaban benar + 2 pengecoh, posisi jawaban bergilir. */
+private fun matchOptions(n: Int, round: Int): List<Int> {
+    val (a, b) = if (n <= 10) 3 to 6 else 9 to 17
+    val list = mutableListOf((round + a) % n, (round + b) % n)
+    list.add(round % 3, round)
+    return list
+}
+
+/**
+ * Halaman "Cocokan Huruf / Angka": kartu benda di kanan, tarik huruf/angka yang benar
+ * dari rak di bawah ke kartu kosong di kiri. Benar -> kartu terisi, lanjut ronde berikutnya.
+ * Salah -> kartu berkedip merah dan pilihan kembali ke rak.
+ */
 @Composable
 internal fun MatchScreen(
     kind: LearnKind,
@@ -55,29 +87,46 @@ internal fun MatchScreen(
     soundOn: Boolean = true,
     onBackClick: () -> Unit = {},
     onSoundToggle: (Boolean) -> Unit = {},
+    /** Dipanggil setelah soal terakhir terjawab: (detik berlalu, jumlah salah). */
     onFinished: (seconds: Int, mistakes: Int) -> Unit = { _, _ -> }
 ) {
-    var currentIndex by rememberSaveable(kind) { mutableIntStateOf(0) }
+    val items = kind.items
+    var round by rememberSaveable(kind) { mutableIntStateOf(0) }
+    val item = items[round]
+    val options = remember(kind, round) { matchOptions(items.size, round) }
+    var solved by remember(kind, round) { mutableStateOf(false) }
+    var flashWrong by remember(kind, round) { mutableStateOf(false) }
+    var dropRect by remember { mutableStateOf(Rect.Zero) }
+    var elapsed by rememberSaveable(kind) { mutableIntStateOf(0) }
     var mistakes by rememberSaveable(kind) { mutableIntStateOf(0) }
-    var seconds by rememberSaveable(kind) { mutableIntStateOf(0) }
+    var timerRunning by rememberSaveable(kind) { mutableStateOf(true) }
 
-    val currentOnFinished by rememberUpdatedState(onFinished)
+    // Suara soal tiap ronde: kuis_huruf_a .. kuis_huruf_z / kuis_angka_1 .. kuis_angka_10 (res/raw)
+    val context = LocalContext.current
+    val questionVoice = "kuis_${item.glyphName}"
+    ScreenVoice(name = questionVoice, enabled = soundOn)
+    val replayQuestion = { if (soundOn) VoiceOver.play(context, questionVoice) }
+    val reactCorrect = { if (soundOn) VoiceOver.play(context, "reaksi_benar") }
+    val reactWrong = { if (soundOn) VoiceOver.play(context, "reaksi_salah") }
 
-    // Timer penghitung waktu
-    LaunchedEffect(kind) {
-        while (true) {
-            delay(1000L)
-            seconds++
+    LaunchedEffect(kind, timerRunning) {
+        while (timerRunning) {
+            delay(1000)
+            elapsed++
         }
     }
 
-    val items = kind.items
-    val currentItem = items.getOrElse(currentIndex) { items.first() }
-
-    // Buat 3 pilihan jawaban (1 benar + 2 pengacau)
-    val options = remember(currentIndex, kind) {
-        val wrongOptions = items.filter { it != currentItem }.shuffled().take(2)
-        (listOf(currentItem) + wrongOptions).shuffled()
+    LaunchedEffect(kind, round, solved) {
+        if (solved) {
+            delay(1400)
+            if (round == items.lastIndex) onFinished(elapsed, mistakes) else round++
+        }
+    }
+    LaunchedEffect(flashWrong) {
+        if (flashWrong) {
+            delay(450)
+            flashWrong = false
+        }
     }
 
     BoxWithConstraints(
@@ -115,91 +164,246 @@ internal fun MatchScreen(
             startIcon = { buttonSize -> BackArrowIcon(Modifier.size(buttonSize * 0.5f)) }
         )
 
-        Crossfade(
-            targetState = currentIndex,
-            animationSpec = tween(250),
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = u * 90),
-            label = "matchContent"
-        ) { targetIdx ->
-            val item = items.getOrElse(targetIdx) { items.first() }
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(u * 14)
+        if (kind == LearnKind.Numbers) {
+            // Cocokan Angka: tiga kartu angka berjajar, ketuk angka yang sesuai pertanyaan di pil
+            var wrongIdx by remember(kind, round) { mutableIntStateOf(-1) }
+            val pop by animateFloatAsState(
+                targetValue = if (solved) 1.08f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                label = "pickPop"
+            )
+            val cardShape = RoundedCornerShape(u * 27)
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = u * 97),
+                horizontalArrangement = Arrangement.spacedBy(u * 35.5f)
             ) {
-                // Kartu Target
-                val cardShape = RoundedCornerShape(u * 20)
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                options.forEach { idx ->
+                    val isAnswer = idx == round
+                    val borderColor = when {
+                        solved && isAnswer -> MatchCorrect
+                        flashWrong && wrongIdx == idx -> MatchWrong
+                        else -> LearnCardOutline
+                    }
                     Box(
                         modifier = Modifier
-                            .size(u * 160, u * 150)
+                            .size(u * 175, u * 180)
+                            .graphicsLayer {
+                                val sc = if (solved && isAnswer) pop else 1f
+                                scaleX = sc
+                                scaleY = sc
+                            }
                             .clip(cardShape)
                             .background(Color.White, cardShape)
-                            .border(2.dp, MatchCardOutline, cardShape)
-                            .padding(u * 10),
+                            .border(if (borderColor == LearnCardOutline) 2.dp else 3.dp, borderColor, cardShape)
+                            .pointerInput(round, solved) {
+                                detectTapGestures {
+                                    if (solved) return@detectTapGestures
+                                    ClickSound.play()
+                                    if (isAnswer) {
+                                        solved = true
+                                        if (round == items.lastIndex) timerRunning = false
+                                        reactCorrect()
+                                    } else {
+                                        wrongIdx = idx
+                                        flashWrong = true
+                                        mistakes++
+                                        reactWrong()
+                                    }
+                                }
+                            }
+                            .padding(u * 12),
                         contentAlignment = Alignment.Center
                     ) {
-                        LearnImage(item.objectName, item.label, u, 24f)
+                        LearnImage(items[idx].glyphName, items[idx].glyphText, u, 70f)
                     }
-                    Spacer(Modifier.height(u * 5))
-                    val pill = RoundedCornerShape(percent = 50)
-                    Box(
-                        modifier = Modifier
-                            .defaultMinSize(minWidth = u * 120)
-                            .clip(pill)
-                            .background(MatchPillFill, pill)
-                            .border(1.dp, MatchPillOutline, pill)
-                            .padding(horizontal = u * 12, vertical = u * 4),
-                        contentAlignment = Alignment.Center
-                    ) {
+                }
+            }
+            LearnPill(
+                u = u,
+                label = "Mana angka ${NumberWords[round]}?",
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = u * 286)
+                    .pointerInput(round) { detectTapGestures { replayQuestion() } },
+                width = 150f
+            )
+        } else {
+            // Dua kartu: kiri = tempat menjatuhkan, kanan = benda
+            val cardShape = RoundedCornerShape(u * 27)
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = u * 97),
+                horizontalArrangement = Arrangement.spacedBy(u * 109)
+            ) {
+                val borderColor = when {
+                    solved -> MatchCorrect
+                    flashWrong -> MatchWrong
+                    else -> LearnCardOutline
+                }
+                Box(
+                    modifier = Modifier
+                        .size(u * 175, u * 180)
+                        .onGloballyPositioned { dropRect = it.boundsInRoot() }
+                        .clip(cardShape)
+                        .background(Color.White, cardShape)
+                        .border(if (solved || flashWrong) 3.dp else 2.dp, borderColor, cardShape)
+                        .padding(u * 12),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val pop by animateFloatAsState(
+                        targetValue = if (solved) 1f else 0.6f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label = "dropPop"
+                    )
+                    if (solved) {
+                        Box(Modifier.graphicsLayer { scaleX = pop; scaleY = pop }) {
+                            LearnImage(item.glyphName, item.glyphText, u, 70f)
+                        }
+                    } else {
                         Text(
-                            text = item.label,
-                            color = MatchPillOutline,
-                            fontSize = (u.value * 14f).sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
+                            text = kind.dragHint,
+                            color = Color.Black,
+                            fontSize = (u.value * 14f).sp
                         )
                     }
                 }
 
-                // Pilihan Kartu
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(u * 16),
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    modifier = Modifier
+                        .size(u * 175, u * 180)
+                        .clip(cardShape)
+                        .background(Color.White, cardShape)
+                        .border(2.dp, LearnCardOutline, cardShape)
+                        .pointerInput(round) { detectTapGestures { replayQuestion() } }
+                        .padding(u * 12),
+                    contentAlignment = Alignment.Center
                 ) {
-                    options.forEach { choice ->
-                        val chipShape = RoundedCornerShape(u * 16)
-                        BouncyButton(
-                            onClick = {
-                                if (choice == item) {
-                                    if (targetIdx + 1 >= items.size) {
-                                        currentOnFinished(seconds, mistakes)
-                                    } else {
-                                        currentIndex = targetIdx + 1
-                                    }
-                                } else {
-                                    mistakes++
-                                }
-                            },
-                            modifier = Modifier.size(u * 75, u * 75),
-                            shape = chipShape,
-                            containerColor = ChipFill,
-                            borderColor = MatchCardOutline,
-                            borderWidth = 2.dp,
-                            contentDescription = choice.chipText
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                LearnImage(choice.chipName, choice.chipText, u, 32f)
-                            }
-                        }
+                    Crossfade(targetState = round, animationSpec = tween(250), label = "matchObject") { r ->
+                        LearnImage(items[r].objectName, items[r].label, u, 24f)
                     }
                 }
             }
+
+            // Rak pilihan (digambar terakhir supaya kartu yang diseret tampil di atas kartu lain)
+            val pill = RoundedCornerShape(percent = 50)
+            key(kind, round) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = u * 313.5f)
+                        .background(LearnPillFill, pill)
+                        .border(1.dp, LearnPillOutline, pill)
+                        .padding(horizontal = u * 37, vertical = u * 2.8f),
+                    horizontalArrangement = Arrangement.spacedBy(u * 15.4f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    options.forEachIndexed { pos, idx ->
+                        val isAnswer = idx == round
+                        DragChip(
+                            item = items[idx],
+                            fallbackColor = ChipFallbackColors[pos % ChipFallbackColors.size],
+                            u = u,
+                            hidden = solved && isAnswer,
+                            enabled = !solved,
+                            onDrop = { center ->
+                                when {
+                                    solved || !dropRect.contains(center) -> false
+                                    isAnswer -> {
+                                        solved = true
+                                        if (round == items.lastIndex) timerRunning = false
+                                        reactCorrect()
+                                        true
+                                    }
+                                    else -> { flashWrong = true; mistakes++; reactWrong(); false }
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Satu huruf/angka yang bisa diseret. onDrop mengembalikan true bila diterima (kartu tidak kembali). */
+@Composable
+private fun DragChip(
+    item: LearnItem,
+    fallbackColor: Color,
+    u: Dp,
+    hidden: Boolean,
+    enabled: Boolean,
+    onDrop: (center: Offset) -> Boolean
+) {
+    val scope = rememberCoroutineScope()
+    val ox = remember { Animatable(0f) }
+    val oy = remember { Animatable(0f) }
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    var dragging by remember { mutableStateOf(false) }
+
+    fun finish() {
+        dragging = false
+        val accepted = onDrop(origin + Offset(ox.value, oy.value))
+        if (!accepted) {
+            scope.launch { ox.animateTo(0f, spring(dampingRatio = 0.6f)) }
+            scope.launch { oy.animateTo(0f, spring(dampingRatio = 0.6f)) }
+        }
+    }
+
+    val context = LocalContext.current
+    val resId = remember(item.chipName) {
+        context.resources.getIdentifier(item.chipName, "drawable", context.packageName)
+    }
+    val size = u * 40
+
+    Box(
+        modifier = Modifier
+            .size(size)
+            // dibaca sebelum offset, jadi origin = posisi diam
+            .onGloballyPositioned { origin = it.boundsInRoot().center }
+            .zIndex(if (dragging) 1f else 0f)
+            .graphicsLayer {
+                translationX = ox.value
+                translationY = oy.value
+                val s = if (dragging) 1.15f else 1f
+                scaleX = s
+                scaleY = s
+                alpha = if (hidden) 0f else 1f
+            }
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                detectDragGestures(
+                    onDragStart = { dragging = true },
+                    onDrag = { change, amount ->
+                        change.consume()
+                        scope.launch {
+                            ox.snapTo(ox.value + amount.x)
+                            oy.snapTo(oy.value + amount.y)
+                        }
+                    },
+                    onDragEnd = { finish() },
+                    onDragCancel = { finish() }
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        if (resId != 0) {
+            Image(
+                painter = painterResource(resId),
+                contentDescription = item.chipText,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Text(
+                text = item.chipText,
+                color = fallbackColor,
+                fontSize = (u.value * 26f).sp,
+                fontWeight = FontWeight.Black
+            )
         }
     }
 }

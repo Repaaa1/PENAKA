@@ -2,10 +2,17 @@ package com.example.tesprojek.ui.screens
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -18,6 +25,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -35,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
@@ -45,12 +54,20 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tesprojek.ui.components.BouncyButton
-import com.example.tesprojek.ui.components.GameBackground
-import com.example.tesprojek.ui.components.LearnItem
+import com.example.tesprojek.ui.components.ClickSound
 import com.example.tesprojek.ui.components.LearnKind
 import com.example.tesprojek.ui.components.PenakaTopBar
-import com.example.tesprojek.ui.components.SwayingGrass
+import com.example.tesprojek.ui.components.ScreenVoice
+import com.example.tesprojek.ui.components.VoiceOver
 import com.example.tesprojek.ui.theme.SkyBlue
+import com.example.tesprojek.ui.components.GameBackground
+import com.example.tesprojek.ui.components.PenakaTopBar
+import com.example.tesprojek.ui.components.SwayingGrass
+import com.example.tesprojek.ui.screens.BackArrowIcon
+import com.example.tesprojek.ui.screens.Clouds
+import com.example.tesprojek.ui.screens.DriftingCloud
+import com.example.tesprojek.ui.screens.MenuDecorations
+import com.example.tesprojek.ui.screens.SceneLayout
 
 internal val LearnCardOutline = Color(0xFF8A5A2B)
 internal val LearnPillFill = Color(0xFFFFF8D6)
@@ -88,6 +105,15 @@ internal fun LearnScreen(
         val h = maxHeight
         val u = h / 412f
 
+        // Suara halaman: Huruf -> "A untuk Ayam" (suara_untuk_a, cadangan suara_huruf_a); Angka -> suara_angka_N
+        val isLetters = kind == LearnKind.Letters
+        val context = LocalContext.current
+        val glyph = items[index].glyphName
+        val openVoice = if (isLetters) "suara_untuk_${glyph.removePrefix("huruf_")}" else "suara_$glyph"
+        val openFallback = if (isLetters) "suara_$glyph" else null
+        ScreenVoice(name = openVoice, enabled = soundOn, fallback = openFallback)
+        val replayOpenVoice = { if (soundOn) VoiceOver.play(context, openVoice, openFallback) }
+
         GameBackground(Modifier.fillMaxSize())
         SwayingGrass(Modifier.fillMaxSize())
         Clouds.forEach { spec ->
@@ -123,12 +149,27 @@ internal fun LearnScreen(
             label = "learnItem"
         ) { i ->
             val item = items[i]
-            Row(horizontalArrangement = Arrangement.spacedBy(u * 106)) {
-                LearnCard(u, kind.fixedLabel, 123f) {
-                    LearnImage(item.glyphName, item.glyphText, u, 70f)
+            if (isLetters) {
+                Row(horizontalArrangement = Arrangement.spacedBy(u * 106)) {
+                    // ketuk huruf -> bunyi hurufnya (suara_huruf_a); ketuk benda -> nama bendanya (suara_benda_a)
+                    LearnCard(
+                        u, kind.fixedLabel, 124f,
+                        onClick = { if (soundOn) VoiceOver.play(context, "suara_${item.glyphName}") }
+                    ) {
+                        LearnImage(item.glyphName, item.glyphText, u, 70f)
+                    }
+                    LearnCard(
+                        u, item.phrase, 170f,
+                        onClick = {
+                            if (soundOn) VoiceOver.play(context, "suara_benda_${item.glyphName.removePrefix("huruf_")}")
+                        }
+                    ) {
+                        LearnImage(item.objectName, item.label, u, 24f)
+                    }
                 }
-                LearnCard(u, item.phrase, 170f) {
-                    LearnImage(item.objectName, item.label, u, 24f)
+            } else {
+                LearnCard(u, kind.fixedLabel, 124f, onClick = replayOpenVoice) {
+                    LearnImage(item.glyphName, item.glyphText, u, 70f)
                 }
             }
         }
@@ -139,20 +180,28 @@ internal fun LearnScreen(
             visible = index > 0,
             u = u,
             onClick = { index-- },
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start))
-                .padding(start = u * 10)
+            modifier = if (isLetters) {
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start))
+                    .padding(start = u * 10)
+            } else {
+                Modifier.align(Alignment.Center).offset(x = -u * 136)
+            }
         )
         NavArrow(
             forward = true,
             visible = index < items.lastIndex,
             u = u,
             onClick = { index++ },
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.End))
-                .padding(end = u * 10)
+            modifier = if (isLetters) {
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.End))
+                    .padding(end = u * 10)
+            } else {
+                Modifier.align(Alignment.Center).offset(x = u * 136)
+            }
         )
     }
 }
@@ -161,39 +210,73 @@ internal fun LearnScreen(
 private fun LearnCard(
     u: Dp,
     label: String,
-    pillMinWidth: Float,
+    pillWidth: Float,
+    onClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
     val shape = RoundedCornerShape(u * 27)
+    val scope = rememberCoroutineScope()
+    val scale = remember { Animatable(1f) }
+    val tilt = remember { Animatable(0f) }
+    val currentOnClick by rememberUpdatedState(onClick)
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
                 .size(u * 175, u * 180)
+                .graphicsLayer {
+                    scaleX = scale.value
+                    scaleY = scale.value
+                    rotationZ = tilt.value
+                }
                 .clip(shape)
                 .background(Color.White, shape)
                 .border(2.dp, LearnCardOutline, shape)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onPress = {
+                            // tekan: mengecil sedikit; lepas: memantul kembali
+                            scope.launch { scale.animateTo(0.92f, tween(70)) }
+                            tryAwaitRelease()
+                            scope.launch { scale.animateTo(1f, spring(dampingRatio = 0.35f, stiffness = 450f)) }
+                        },
+                        onTap = {
+                            scope.launch {
+                                // goyang kecil kiri-kanan
+                                tilt.animateTo(-4f, tween(60))
+                                tilt.animateTo(3f, tween(70))
+                                tilt.animateTo(0f, spring(dampingRatio = 0.4f, stiffness = 400f))
+                            }
+                            currentOnClick()
+                        }
+                    )
+                }
                 .padding(u * 12),
             contentAlignment = Alignment.Center
         ) { content() }
-        Spacer(Modifier.height(u * 7))
-        val pill = RoundedCornerShape(percent = 50)
-        Box(
-            modifier = Modifier
-                .defaultMinSize(minWidth = u * pillMinWidth)
-                .clip(pill)
-                .background(LearnPillFill, pill)
-                .border(1.dp, LearnPillOutline, pill)
-                .padding(horizontal = u * 12, vertical = u * 4),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = label,
-                color = LearnPillOutline,
-                fontSize = (u.value * 14f).sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1
-            )
-        }
+        Spacer(Modifier.height(u * 9))
+        LearnPill(u, label, width = pillWidth)
+    }
+}
+
+/** Pil krem kecil (124 x 26 u) seperti di desain. */
+@Composable
+internal fun LearnPill(u: Dp, label: String, modifier: Modifier = Modifier, width: Float = 124f) {
+    val pill = RoundedCornerShape(percent = 50)
+    Box(
+        modifier = modifier
+            .size(u * width, u * 26)
+            .clip(pill)
+            .background(LearnPillFill, pill)
+            .border(1.dp, LearnPillOutline, pill),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = Color.Black,
+            fontSize = (u.value * 14f).sp,
+            fontWeight = FontWeight.Normal,
+            maxLines = 1
+        )
     }
 }
 
@@ -232,7 +315,7 @@ private fun NavArrow(
     Box(modifier.size(boxW, boxH)) {
         if (visible) {
             BouncyButton(
-                onClick = onClick,
+                onClick = { ClickSound.play(); onClick() },
                 modifier = Modifier.size(boxW, boxH),
                 shape = RectangleShape,
                 containerColor = Color.Transparent,

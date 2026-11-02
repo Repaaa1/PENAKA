@@ -34,10 +34,16 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tesprojek.ui.components.BouncyButton
-import com.example.tesprojek.ui.components.GameBackground
+import com.example.tesprojek.ui.components.ClickSound
 import com.example.tesprojek.ui.components.PenakaTopBar
-import com.example.tesprojek.ui.components.SwayingGrass
+import com.example.tesprojek.ui.components.ScreenVoice
 import com.example.tesprojek.ui.theme.SkyBlue
+import com.example.tesprojek.ui.components.GameBackground
+import com.example.tesprojek.ui.components.SwayingGrass
+import com.example.tesprojek.ui.screens.Clouds
+import com.example.tesprojek.ui.screens.DriftingCloud
+import com.example.tesprojek.ui.screens.enter
+import com.example.tesprojek.ui.screens.rememberEntrance
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -83,6 +89,8 @@ internal fun ScoreScreen(
         2 -> "Bagus Sekali" to "Terus Berlatih!"
         else -> "Ayo Coba Lagi" to "Semangat!"
     }
+    // Suara hasil: 2-3 bintang -> "Yeay, kamu berhasil"; 1 bintang -> "Tetap semangat, coba main lagi ya!"
+    ScreenVoice(name = if (stars >= 2) "skor_berhasil" else "skor_semangat", enabled = soundOn)
 
     BoxWithConstraints(
         modifier
@@ -120,29 +128,35 @@ internal fun ScoreScreen(
                 .padding(top = u * 20)
                 .enter(panelIn, rise = 14.dp, startScale = 0.92f)
                 .size(u * 353, u * 353)
-                .background(PanelFill, panelShape)
-                .border(2.dp, ScoreBrown, panelShape)
         ) {
-            Column(
+            // Kotak berbingkai: garis tepi digambar di atas isinya, jadi tombol ditaruh di luar kotak ini
+            Box(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = u * 40),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxSize()
+                    .background(PanelFill, panelShape)
+                    .border(2.dp, ScoreBrown, panelShape)
             ) {
-                ScoreText(title, u, 22f)
-                Spacer(Modifier.height(u * 28))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(u * 2),
-                    verticalAlignment = Alignment.Bottom
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = u * 40),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    ScoreStar(on = stars >= 1, size = u * 63, delayMs = 400, u = u)
-                    ScoreStar(on = stars >= 2, size = u * 82, delayMs = 650, u = u)
-                    ScoreStar(on = stars >= 3, size = u * 63, delayMs = 900, u = u)
+                    ScoreText(title, u, 22f)
+                    Spacer(Modifier.height(u * 28))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(u * 2),
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        ScoreStar(on = stars >= 1, size = u * 63, delayMs = 400, u = u)
+                        ScoreStar(on = stars >= 2, size = u * 82, delayMs = 650, u = u)
+                        ScoreStar(on = stars >= 3, size = u * 63, delayMs = 900, u = u)
+                    }
+                    Spacer(Modifier.height(u * 24))
+                    ScoreText(praise, u, 20f)
+                    Spacer(Modifier.height(u * 14))
+                    ScoreText("Waktu : ${formatTime(seconds)}", u, 20f)
                 }
-                Spacer(Modifier.height(u * 24))
-                ScoreText(praise, u, 20f)
-                Spacer(Modifier.height(u * 14))
-                ScoreText("Waktu : ${formatTime(seconds)}", u, 20f)
             }
 
             // Tiga tombol, setengahnya menjorok keluar dari tepi bawah panel
@@ -208,7 +222,7 @@ private fun RoundAction(
     icon: @Composable () -> Unit
 ) {
     BouncyButton(
-        onClick = onClick,
+        onClick = { ClickSound.play(); onClick() },
         modifier = Modifier.size(size),
         shape = CircleShape,
         containerColor = color,

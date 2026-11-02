@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tesprojek.R
+import com.example.tesprojek.ui.components.ScreenVoice
 import com.example.tesprojek.ui.components.BouncyButton
 import com.example.tesprojek.ui.components.Butterfly
 import com.example.tesprojek.ui.components.ExclamationIcon
@@ -99,6 +100,9 @@ fun GameScreen(
     ) {
         val w = maxWidth
         val h = maxHeight
+
+        // Suara halaman utama: res/raw/suara_halo
+        ScreenVoice(name = "suara_halo", enabled = soundOn)
 
         // Layer 1: langit + bukit (statis), lalu rumput yang bergoyang
         GameBackground(Modifier.fillMaxSize())

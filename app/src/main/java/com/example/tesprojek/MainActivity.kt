@@ -16,7 +16,9 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.example.tesprojek.ui.components.ClickSound
 import com.example.tesprojek.ui.components.LearnKind
+import com.example.tesprojek.ui.screens.BackgroundMusic
 import com.example.tesprojek.ui.screens.GameScreen
 import com.example.tesprojek.ui.screens.LearnScreen
 import com.example.tesprojek.ui.screens.MatchScreen
@@ -40,6 +42,7 @@ class MainActivity : ComponentActivity() {
         // SplashScreen Compose tampil. Harus dipanggil sebelum super.onCreate().
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        ClickSound.init(this)
         // Jaga-jaga jika tema masih membawa ActionBar (judul proyek menutupi atas layar)
         actionBar?.hide()
         hideSystemBars()
@@ -50,6 +53,7 @@ class MainActivity : ComponentActivity() {
                 var screen by rememberSaveable { mutableStateOf(Screen.Splash) }
                 // Status suara dipegang di sini supaya konsisten antar layar
                 var soundOn by rememberSaveable { mutableStateOf(true) }
+                BackgroundMusic(enabled = soundOn)
                 // Hasil kuis terakhir untuk halaman skor
                 var scoreStars by rememberSaveable { mutableIntStateOf(3) }
                 var scoreSeconds by rememberSaveable { mutableIntStateOf(0) }

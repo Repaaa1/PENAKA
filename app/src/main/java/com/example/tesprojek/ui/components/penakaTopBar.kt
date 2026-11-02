@@ -26,14 +26,16 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.tesprojek.ui.components.BouncyButton
+import com.example.tesprojek.ui.components.SpeakerIcon
 import com.example.tesprojek.ui.theme.TitleBlue
 import com.example.tesprojek.ui.theme.TitleOrange
 import com.example.tesprojek.ui.theme.TitlePink
 import com.example.tesprojek.ui.theme.TitlePurple
 import com.example.tesprojek.ui.theme.TitleRedOrange
 import com.example.tesprojek.ui.theme.TitleYellow
-import com.example.tesprojek.ui.screens.TWO_PI
 import com.example.tesprojek.ui.screens.loopState
+import com.example.tesprojek.ui.screens.TWO_PI
 import kotlin.math.sin
 
 /**
@@ -72,7 +74,7 @@ internal fun PenakaTopBar(
             .padding(horizontal = 10.dp, vertical = 10.dp)
     ) {
         BouncyButton(
-            onClick = onStartClick,
+            onClick = { ClickSound.play(); onStartClick() },
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .size(buttonSize),
@@ -85,7 +87,7 @@ internal fun PenakaTopBar(
         title()
 
         BouncyButton(
-            onClick = onSoundClick,
+            onClick = { ClickSound.play(); onSoundClick() },
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .size(buttonSize),

@@ -48,15 +48,25 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tesprojek.R
+import com.example.tesprojek.ui.components.ScreenVoice
 import com.example.tesprojek.ui.components.BouncyButton
+import com.example.tesprojek.ui.components.ClickSound
+import com.example.tesprojek.ui.components.SpeakerIcon
+import com.example.tesprojek.ui.components.PenakaTopBar
+import com.example.tesprojek.ui.theme.OutlineBrown
+import com.example.tesprojek.ui.theme.SkyBlue
 import com.example.tesprojek.ui.components.Butterfly
 import com.example.tesprojek.ui.components.GameBackground
 import com.example.tesprojek.ui.components.HoneyJar
-import com.example.tesprojek.ui.components.PenakaTopBar
-import com.example.tesprojek.ui.components.SpeakerIcon
 import com.example.tesprojek.ui.components.SwayingGrass
-import com.example.tesprojek.ui.theme.OutlineBrown
-import com.example.tesprojek.ui.theme.SkyBlue
+import com.example.tesprojek.ui.screens.Clouds
+import com.example.tesprojek.ui.screens.DecoImage
+import com.example.tesprojek.ui.screens.DriftingCloud
+import com.example.tesprojek.ui.screens.OutBack
+import com.example.tesprojek.ui.screens.TWO_PI
+import com.example.tesprojek.ui.screens.enter
+import com.example.tesprojek.ui.screens.loopState
+import com.example.tesprojek.ui.screens.rememberEntrance
 import kotlin.math.sin
 
 private val CardOutline = Color(0xFF8A5A2B)
@@ -97,6 +107,9 @@ fun MenuScreen(
         val w = maxWidth
         val h = maxHeight
         val u = h / 412f
+
+        // Suara halaman Menu: res/raw/suara_menu
+        ScreenVoice(name = "suara_menu", enabled = soundOn)
 
         // Langit + bukit + rumput bergoyang
         GameBackground(Modifier.fillMaxSize())
@@ -172,7 +185,7 @@ internal fun MenuCard(
 
     // BouncyButton dipakai sebagai pembungkus (tanpa latar/garis) supaya kartu + label memantul bersama.
     BouncyButton(
-        onClick = onClick,
+        onClick = { ClickSound.play(); onClick() },
         modifier = Modifier
             .enter(cardIn, rise = 16.dp, startScale = 0.9f)
             .graphicsLayer { translationY = float * 2.dp.toPx() },
@@ -290,18 +303,28 @@ internal fun BoxScope.MenuDecorations(u: Dp, layout: SceneLayout = SceneLayout()
 
     // Bunga kiri (dipakai halaman Mengenal)
     val leftFlowerSway by loopState(-4f, 4f, 3100, startOffsetMs = 300, label = "leftFlowerSway")
-    if (layout.leftFlower) DecoImage(
-        res = R.drawable.bunga,
-        aspect = 52f / 76f,
-        modifier = Modifier
-            .align(Alignment.BottomStart)
-            .padding(start = u * 14, bottom = u * 100)
-            .height(u * 72)
-            .graphicsLayer {
-                rotationZ = leftFlowerSway
-                transformOrigin = TransformOrigin(0.45f, 1f)
-            }
-    )
+    if (layout.leftFlower) {
+        // Garis bukit bergantung pada lebar layar, jadi tinggi bunga dihitung dari kurva bukit (HillLayer)
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val sw = maxWidth.value
+            val sh = maxHeight.value
+            val flowerX = u.value * 36f
+            val hillY = hillEdgeY(flowerX, sw, sh)
+            val flowerBottom = (sh - hillY).dp - u * 4
+            DecoImage(
+                res = R.drawable.bunga,
+                aspect = 52f / 76f,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = u * 14, bottom = flowerBottom)
+                    .height(u * 72)
+                    .graphicsLayer {
+                        rotationZ = leftFlowerSway
+                        transformOrigin = TransformOrigin(0.45f, 1f)
+                    }
+            )
+        }
+    }
 
     // Beruang melambai: bernapas pelan + sedikit bergoyang
     val breathe by loopState(1f, 1.018f, 2600, label = "bearBreathe")
@@ -371,4 +394,23 @@ internal fun BoxScope.MenuDecorations(u: Dp, layout: SceneLayout = SceneLayout()
             .padding(end = u * 99, bottom = u * 30)
             .height(u * 146)
     )
+}
+
+/** Tinggi (dari atas) garis bukit pada posisi x; sama dengan kurva pertama di HillLayer. */
+private fun hillEdgeY(x: Float, w: Float, h: Float): Float {
+    var px = 0f; var py = h * 0.80f
+    val x1 = w * 0.20f; val y1 = h * 0.66f
+    val x2 = w * 0.42f; val y2 = h * 0.60f
+    val x3 = w * 0.60f; val y3 = h * 0.62f
+    for (i in 1..64) {
+        val t = i / 64f; val m = 1 - t
+        val cx = m * m * m * 0f + 3 * m * m * t * x1 + 3 * m * t * t * x2 + t * t * t * x3
+        val cy = m * m * m * h * 0.80f + 3 * m * m * t * y1 + 3 * m * t * t * y2 + t * t * t * y3
+        if (cx >= x) {
+            val f = if (cx == px) 0f else (x - px) / (cx - px)
+            return py + (cy - py) * f
+        }
+        px = cx; py = cy
+    }
+    return py
 }

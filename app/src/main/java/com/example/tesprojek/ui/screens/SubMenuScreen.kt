@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.example.tesprojek.R
+import com.example.tesprojek.ui.components.ScreenVoice
 import com.example.tesprojek.ui.components.GameBackground
 import com.example.tesprojek.ui.components.PenakaTopBar
 import com.example.tesprojek.ui.components.SwayingGrass
@@ -85,6 +86,12 @@ internal fun SubMenuScreen(
         val w = maxWidth
         val h = maxHeight
         val u = h / 412f
+
+        // Suara sub menu: res/raw/suara_huruf atau suara_angka
+        ScreenVoice(
+            name = if (kind == SubMenuKind.Letters) "suara_huruf" else "suara_angka",
+            enabled = soundOn
+        )
 
         // Langit + bukit + rumput bergoyang, awan melayang
         GameBackground(Modifier.fillMaxSize())

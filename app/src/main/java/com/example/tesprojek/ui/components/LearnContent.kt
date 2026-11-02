@@ -32,11 +32,11 @@ internal enum class LearnKind(
     Letters(
         title = "Mengenal Huruf",
         matchTitle = "Cocokan Huruf",
-        dragHint = "Tarik huruf ke sini",
+        dragHint = "(drag huruf)",
         fixedLabel = "Huruf",
         items = listOf(
-            "Ayam", "Bebek", "Cicak", "Domba", "Elang", "Foto", "Gajah", "Harimau", "Ikan",
-            "Jerapah", "Kuda", "Lebah", "Monyet", "Nanas", "Obor", "Pisang", "Quokka", "Rusa",
+            "Ayam", "Buku", "Cicak", "Dadu", "Elang", "Flamingo", "Gunting", "Hidung", "Ikan",
+            "Jagung", "Kardus", "Lilin", "Mangga", "Nasi", "Obor", "Pisang", "Quokka", "Rusa",
             "Sapi", "Tikus", "Ulat", "Vas", "Wortel", "Xilofon", "Yoyo", "Zebra"
         ).mapIndexed { i, word ->
             val c = 'a' + i
@@ -47,7 +47,7 @@ internal enum class LearnKind(
     Numbers(
         title = "Mengenal Angka",
         matchTitle = "Cocokan Angka",
-        dragHint = "Tarik angka ke sini",
+        dragHint = "(drag angka)",
         fixedLabel = "Angka",
         items = listOf(
             "Tongkat", "Angsa", "Sepatu", "Kursi", "Bintang", "Payung", "Pensil", "Laba-laba", "Balon", "Roda"
