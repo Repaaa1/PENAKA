@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
@@ -16,6 +17,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.example.tesprojek.data.KuisViewModel
 import com.example.tesprojek.ui.components.ClickSound
 import com.example.tesprojek.ui.components.LearnKind
 import com.example.tesprojek.ui.screens.BackgroundMusic
@@ -29,6 +31,7 @@ import com.example.tesprojek.ui.screens.SubMenuKind
 import com.example.tesprojek.ui.screens.SubMenuScreen
 import com.example.tesprojek.ui.screens.starsFor
 import com.example.tesprojek.ui.theme.PenakaTheme
+import com.example.tesprojek.data.keLearnItems
 
 private enum class Screen { Splash, Home, Menu, Letters, Numbers, LearnLetters, LearnNumbers, MatchLetters, MatchNumbers, ScoreLetters, ScoreNumbers }
 
@@ -36,6 +39,8 @@ private enum class Screen { Splash, Home, Menu, Letters, Numbers, LearnLetters, 
 //   android:screenOrientation="sensorLandscape"
 //   android:theme="@style/Theme.Penaka.Starting"
 class MainActivity : ComponentActivity() {
+
+    private val kuisViewModel: KuisViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Splash sistem (satu warna langit, tanpa ikon) supaya tidak ada kilatan putih sebelum
@@ -57,6 +62,25 @@ class MainActivity : ComponentActivity() {
                 // Hasil kuis terakhir untuk halaman skor
                 var scoreStars by rememberSaveable { mutableIntStateOf(3) }
                 var scoreSeconds by rememberSaveable { mutableIntStateOf(0) }
+
+                // Memuat 10 soal acak dari database, lalu pindah ke layar kuis
+                val bukaKuisHuruf = {
+                    kuisViewModel.muatSoal("huruf")
+                    screen = Screen.MatchLetters
+                }
+                val bukaKuisAngka = {
+                    kuisViewModel.muatSoal("angka")
+                    screen = Screen.MatchNumbers
+                }
+                // Memuat materi dari database, lalu pindah ke halaman belajar
+                val bukaBelajarHuruf = {
+                    kuisViewModel.muatMateri("huruf")
+                    screen = Screen.LearnLetters
+                }
+                val bukaBelajarAngka = {
+                    kuisViewModel.muatMateri("angka")
+                    screen = Screen.LearnNumbers
+                }
 
                 // Tombol kembali sistem: Huruf/Angka -> Menu -> Home
                 BackHandler(enabled = screen != Screen.Splash && screen != Screen.Home) {
@@ -102,8 +126,8 @@ class MainActivity : ComponentActivity() {
                             soundOn = soundOn,
                             onBackClick = { screen = Screen.Menu },
                             onSoundToggle = { soundOn = it },
-                            onLearnClick = { screen = Screen.LearnLetters },
-                            onMatchClick = { screen = Screen.MatchLetters }
+                            onLearnClick = bukaBelajarHuruf,
+                            onMatchClick = bukaKuisHuruf
                         )
 
                         Screen.Numbers -> SubMenuScreen(
@@ -111,32 +135,38 @@ class MainActivity : ComponentActivity() {
                             soundOn = soundOn,
                             onBackClick = { screen = Screen.Menu },
                             onSoundToggle = { soundOn = it },
-                            onLearnClick = { screen = Screen.LearnNumbers },
-                            onMatchClick = { screen = Screen.MatchNumbers }
+                            onLearnClick = bukaBelajarAngka,
+                            onMatchClick = bukaKuisAngka
                         )
 
                         Screen.LearnLetters -> LearnScreen(
                             kind = LearnKind.Letters,
                             soundOn = soundOn,
                             onBackClick = { screen = Screen.Letters },
-                            onSoundToggle = { soundOn = it }
+                            onSoundToggle = { soundOn = it },
+                            items = kuisViewModel.materiHuruf.keLearnItems(LearnKind.Letters)
                         )
 
                         Screen.LearnNumbers -> LearnScreen(
                             kind = LearnKind.Numbers,
                             soundOn = soundOn,
                             onBackClick = { screen = Screen.Numbers },
-                            onSoundToggle = { soundOn = it }
+                            onSoundToggle = { soundOn = it },
+                            items = kuisViewModel.materiAngka.keLearnItems(LearnKind.Numbers)
                         )
 
                         Screen.MatchLetters -> MatchScreen(
                             kind = LearnKind.Letters,
+                            soal = kuisViewModel.soal,
                             soundOn = soundOn,
                             onBackClick = { screen = Screen.Letters },
                             onSoundToggle = { soundOn = it },
                             onFinished = { seconds, mistakes ->
-                                scoreStars = starsFor(mistakes, LearnKind.Letters.items.size)
+                                val total = kuisViewModel.soal.size
+                                val bintang = starsFor(mistakes, total)
+                                scoreStars = bintang
                                 scoreSeconds = seconds
+                                kuisViewModel.simpanHasil("huruf", total, mistakes, bintang, seconds)
                                 screen = Screen.ScoreLetters
                             }
                         )
@@ -148,18 +178,24 @@ class MainActivity : ComponentActivity() {
                             onBackClick = { screen = Screen.Letters },
                             onSoundToggle = { soundOn = it },
                             onMenuClick = { screen = Screen.Menu },
-                            onReplayClick = { screen = Screen.MatchLetters },
-                            onNextClick = { screen = Screen.MatchNumbers }
+                            onReplayClick = bukaKuisHuruf,
+                            onNextClick = bukaKuisAngka,
+                            rekorBintang = kuisViewModel.rekor?.bintangDidapat,
+                            rekorDetik = kuisViewModel.rekor?.durasiDetik ?: 0
                         )
 
                         Screen.MatchNumbers -> MatchScreen(
                             kind = LearnKind.Numbers,
+                            soal = kuisViewModel.soal,
                             soundOn = soundOn,
                             onBackClick = { screen = Screen.Numbers },
                             onSoundToggle = { soundOn = it },
                             onFinished = { seconds, mistakes ->
-                                scoreStars = starsFor(mistakes, LearnKind.Numbers.items.size)
+                                val total = kuisViewModel.soal.size
+                                val bintang = starsFor(mistakes, total)
+                                scoreStars = bintang
                                 scoreSeconds = seconds
+                                kuisViewModel.simpanHasil("angka", total, mistakes, bintang, seconds)
                                 screen = Screen.ScoreNumbers
                             }
                         )
@@ -171,8 +207,10 @@ class MainActivity : ComponentActivity() {
                             onBackClick = { screen = Screen.Numbers },
                             onSoundToggle = { soundOn = it },
                             onMenuClick = { screen = Screen.Menu },
-                            onReplayClick = { screen = Screen.MatchNumbers },
-                            onNextClick = { screen = Screen.MatchLetters }
+                            onReplayClick = bukaKuisAngka,
+                            onNextClick = bukaKuisHuruf,
+                            rekorBintang = kuisViewModel.rekor?.bintangDidapat,
+                            rekorDetik = kuisViewModel.rekor?.durasiDetik ?: 0
                         )
                     }
                 }

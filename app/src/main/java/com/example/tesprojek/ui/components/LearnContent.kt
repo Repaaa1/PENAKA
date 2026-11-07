@@ -32,12 +32,12 @@ internal enum class LearnKind(
     Letters(
         title = "Mengenal Huruf",
         matchTitle = "Cocokan Huruf",
-        dragHint = "(drag huruf)",
+        dragHint = "(tarik huruf)",
         fixedLabel = "Huruf",
         items = listOf(
             "Ayam", "Buku", "Cicak", "Dadu", "Elang", "Flamingo", "Gunting", "Hidung", "Ikan",
-            "Jagung", "Kardus", "Lilin", "Mangga", "Nasi", "Obor", "Pisang", "Quokka", "Rusa",
-            "Sapi", "Tikus", "Ulat", "Vas", "Wortel", "Xilofon", "Yoyo", "Zebra"
+            "Jagung", "Kardus", "Lilin", "Mangga", "Nasi", "Otak", "Pelangi", "Qatar", "Rumah",
+            "Suling", "Tomat", "Uang", "Viola", "Wayang", "Xilofon", "Yoyo", "Zebra"
         ).mapIndexed { i, word ->
             val c = 'a' + i
             LearnItem("huruf_$c", "benda_$c", "${c.uppercaseChar()}$c", word, "${c.uppercaseChar()} untuk $word",
@@ -47,10 +47,10 @@ internal enum class LearnKind(
     Numbers(
         title = "Mengenal Angka",
         matchTitle = "Cocokan Angka",
-        dragHint = "(drag angka)",
+        dragHint = "(tarik angka)",
         fixedLabel = "Angka",
         items = listOf(
-            "Tongkat", "Angsa", "Sepatu", "Kursi", "Bintang", "Payung", "Pensil", "Laba-laba", "Balon", "Roda"
+            "Tongkat", "Angsa", "Ular", "Kursi", "Kuda Laut", "Siput", "Jarum Jam", "Manusia Salju", "Balon", "Bisbol"
         ).mapIndexed { i, word ->
             val n = i + 1
             LearnItem("angka_$n", "benda_angka_$n", "$n", word, "mirip dengan $word",

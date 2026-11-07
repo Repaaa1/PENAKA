@@ -61,13 +61,9 @@ import com.example.tesprojek.ui.components.ScreenVoice
 import com.example.tesprojek.ui.components.VoiceOver
 import com.example.tesprojek.ui.theme.SkyBlue
 import com.example.tesprojek.ui.components.GameBackground
-import com.example.tesprojek.ui.components.PenakaTopBar
 import com.example.tesprojek.ui.components.SwayingGrass
-import com.example.tesprojek.ui.screens.BackArrowIcon
-import com.example.tesprojek.ui.screens.Clouds
-import com.example.tesprojek.ui.screens.DriftingCloud
-import com.example.tesprojek.ui.screens.MenuDecorations
-import com.example.tesprojek.ui.screens.SceneLayout
+import com.example.tesprojek.ui.components.LearnItem
+
 
 internal val LearnCardOutline = Color(0xFF8A5A2B)
 internal val LearnPillFill = Color(0xFFFFF8D6)
@@ -91,10 +87,15 @@ internal fun LearnScreen(
     modifier: Modifier = Modifier,
     soundOn: Boolean = true,
     onBackClick: () -> Unit = {},
-    onSoundToggle: (Boolean) -> Unit = {}
+    onSoundToggle: (Boolean) -> Unit = {},
+    items: List<LearnItem> = kind.items
 ) {
     var index by rememberSaveable(kind) { mutableIntStateOf(0) }
-    val items = kind.items
+    if (items.isEmpty()) {
+        // Materi belum selesai dimuat: tampilkan langit kosong sebentar
+        Box(modifier.fillMaxSize().background(SkyBlue))
+        return
+    }
 
     BoxWithConstraints(
         modifier
@@ -111,8 +112,8 @@ internal fun LearnScreen(
         val glyph = items[index].glyphName
         val openVoice = if (isLetters) "suara_untuk_${glyph.removePrefix("huruf_")}" else "suara_$glyph"
         val openFallback = if (isLetters) "suara_$glyph" else null
-        ScreenVoice(name = openVoice, enabled = soundOn, fallback = openFallback)
-        val replayOpenVoice = { if (soundOn) VoiceOver.play(context, openVoice, openFallback) }
+        ScreenVoice(name = openVoice, enabled = true, fallback = openFallback)
+        val replayOpenVoice = { VoiceOver.play(context, openVoice, openFallback) }
 
         GameBackground(Modifier.fillMaxSize())
         SwayingGrass(Modifier.fillMaxSize())
@@ -154,14 +155,14 @@ internal fun LearnScreen(
                     // ketuk huruf -> bunyi hurufnya (suara_huruf_a); ketuk benda -> nama bendanya (suara_benda_a)
                     LearnCard(
                         u, kind.fixedLabel, 124f,
-                        onClick = { if (soundOn) VoiceOver.play(context, "suara_${item.glyphName}") }
+                        onClick = { VoiceOver.play(context, "suara_${item.glyphName}") }
                     ) {
                         LearnImage(item.glyphName, item.glyphText, u, 70f)
                     }
                     LearnCard(
                         u, item.phrase, 170f,
                         onClick = {
-                            if (soundOn) VoiceOver.play(context, "suara_benda_${item.glyphName.removePrefix("huruf_")}")
+                            VoiceOver.play(context, "suara_benda_${item.glyphName.removePrefix("huruf_")}")
                         }
                     ) {
                         LearnImage(item.objectName, item.label, u, 24f)
