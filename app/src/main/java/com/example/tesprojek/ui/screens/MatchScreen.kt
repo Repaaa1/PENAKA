@@ -57,23 +57,16 @@ import com.example.tesprojek.ui.components.VoiceOver
 import com.example.tesprojek.ui.theme.SkyBlue
 import com.example.tesprojek.ui.components.GameBackground
 import com.example.tesprojek.ui.components.SwayingGrass
-import com.example.tesprojek.ui.screens.Clouds
-import com.example.tesprojek.ui.screens.DriftingCloud
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.tesprojek.data.SoalKuis
+import com.example.tesprojek.ui.components.playAndAwait
+import com.example.tesprojek.ui.components.BouncyButton
 
 private val MatchCorrect = Color(0xFF6BB84A)
 private val MatchWrong = Color(0xFFE8402F)
 private val NumberWords = listOf("satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh")
 private val ChipFallbackColors = listOf(Color(0xFFE8402F), Color(0xFF2EA8E0), Color(0xFFF27BB0))
-
-/** Satu ronde = satu item; setelah ronde terakhir halaman skor dibuka. Pilihan: jawaban benar + 2 pengecoh, posisi jawaban bergilir. */
-private fun matchOptions(n: Int, round: Int): List<Int> {
-    val (a, b) = if (n <= 10) 3 to 6 else 9 to 17
-    val list = mutableListOf((round + a) % n, (round + b) % n)
-    list.add(round % 3, round)
-    return list
-}
 
 /**
  * Halaman "Cocokan Huruf / Angka": kartu benda di kanan, tarik huruf/angka yang benar
@@ -82,7 +75,7 @@ private fun matchOptions(n: Int, round: Int): List<Int> {
  */
 @Composable
 internal fun MatchScreen(
-    kind: LearnKind,
+    kind: LearnKind, soal: List<SoalKuis>,
     modifier: Modifier = Modifier,
     soundOn: Boolean = true,
     onBackClick: () -> Unit = {},
@@ -91,9 +84,17 @@ internal fun MatchScreen(
     onFinished: (seconds: Int, mistakes: Int) -> Unit = { _, _ -> }
 ) {
     val items = kind.items
+    val rounds = remember(soal, kind) { bangunRonde(soal, items) }
+    if (rounds.isEmpty()) {
+        // Soal belum selesai dimuat: tampilkan langit kosong sebentar
+        Box(modifier.fillMaxSize().background(SkyBlue))
+        return
+    }
     var round by rememberSaveable(kind) { mutableIntStateOf(0) }
-    val item = items[round]
-    val options = remember(kind, round) { matchOptions(items.size, round) }
+    val ronde = rounds[round]
+    val item = ronde.benar
+    val benarIdx = items.indexOf(item)
+    val options = remember(ronde) { ronde.opsi.map { items.indexOf(it) } }
     var solved by remember(kind, round) { mutableStateOf(false) }
     var flashWrong by remember(kind, round) { mutableStateOf(false) }
     var dropRect by remember { mutableStateOf(Rect.Zero) }
@@ -103,11 +104,10 @@ internal fun MatchScreen(
 
     // Suara soal tiap ronde: kuis_huruf_a .. kuis_huruf_z / kuis_angka_1 .. kuis_angka_10 (res/raw)
     val context = LocalContext.current
-    val questionVoice = "kuis_${item.glyphName}"
-    ScreenVoice(name = questionVoice, enabled = soundOn)
-    val replayQuestion = { if (soundOn) VoiceOver.play(context, questionVoice) }
-    val reactCorrect = { if (soundOn) VoiceOver.play(context, "reaksi_benar") }
-    val reactWrong = { if (soundOn) VoiceOver.play(context, "reaksi_salah") }
+    val questionVoice = ronde.soal.audioInstruksi
+    ScreenVoice(name = questionVoice, enabled = true)
+    val replayQuestion = { VoiceOver.play(context, questionVoice) }
+    val reactWrong = { VoiceOver.play(context, ronde.soal.audioSalah) }
 
     LaunchedEffect(kind, timerRunning) {
         while (timerRunning) {
@@ -118,8 +118,9 @@ internal fun MatchScreen(
 
     LaunchedEffect(kind, round, solved) {
         if (solved) {
-            delay(1400)
-            if (round == items.lastIndex) onFinished(elapsed, mistakes) else round++
+            VoiceOver.playAndAwait(context, ronde.soal.audioBenar)
+            delay(600)
+            if (round == rounds.lastIndex) onFinished(elapsed, mistakes) else round++
         }
     }
     LaunchedEffect(flashWrong) {
@@ -164,6 +165,31 @@ internal fun MatchScreen(
             startIcon = { buttonSize -> BackArrowIcon(Modifier.size(buttonSize * 0.5f)) }
         )
 
+        // Lencana nomor soal: di kiri tombol speaker, warna sama dengan tombol top bar
+        val tombolTop = (h * 0.14f).coerceAtLeast(44.dp)
+        val lencanaTinggi = tombolTop * 0.6f
+        BouncyButton(
+            onClick = {},
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(
+                    top = 10.dp + (tombolTop - lencanaTinggi) / 2,
+                    end = 10.dp + tombolTop + 8.dp
+                )
+                .size(width = tombolTop * 1.25f, height = lencanaTinggi),
+            shape = RoundedCornerShape(percent = 50),
+            borderWidth = 3.dp,
+            contentDescription = "Soal ${round + 1} dari ${rounds.size}"
+        ) {
+            Text(
+                text = "${round + 1}/${rounds.size}",
+                color = LearnCardOutline,
+                fontSize = (u.value * 14f).sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+        }
+
         if (kind == LearnKind.Numbers) {
             // Cocokan Angka: tiga kartu angka berjajar, ketuk angka yang sesuai pertanyaan di pil
             var wrongIdx by remember(kind, round) { mutableIntStateOf(-1) }
@@ -180,7 +206,7 @@ internal fun MatchScreen(
                 horizontalArrangement = Arrangement.spacedBy(u * 35.5f)
             ) {
                 options.forEach { idx ->
-                    val isAnswer = idx == round
+                    val isAnswer = idx == benarIdx
                     val borderColor = when {
                         solved && isAnswer -> MatchCorrect
                         flashWrong && wrongIdx == idx -> MatchWrong
@@ -203,8 +229,7 @@ internal fun MatchScreen(
                                     ClickSound.play()
                                     if (isAnswer) {
                                         solved = true
-                                        if (round == items.lastIndex) timerRunning = false
-                                        reactCorrect()
+                                        if (round == rounds.lastIndex) timerRunning = false
                                     } else {
                                         wrongIdx = idx
                                         flashWrong = true
@@ -222,12 +247,12 @@ internal fun MatchScreen(
             }
             LearnPill(
                 u = u,
-                label = "Mana angka ${NumberWords[round]}?",
+                label = "Mana angka ${NumberWords[benarIdx]}?",
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = u * 286)
                     .pointerInput(round) { detectTapGestures { replayQuestion() } },
-                width = 150f
+                width = 200f
             )
         } else {
             // Dua kartu: kiri = tempat menjatuhkan, kanan = benda
@@ -282,7 +307,7 @@ internal fun MatchScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Crossfade(targetState = round, animationSpec = tween(250), label = "matchObject") { r ->
-                        LearnImage(items[r].objectName, items[r].label, u, 24f)
+                        LearnImage(rounds[r].benar.objectName, rounds[r].benar.label, u, 24f)
                     }
                 }
             }
@@ -301,7 +326,7 @@ internal fun MatchScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     options.forEachIndexed { pos, idx ->
-                        val isAnswer = idx == round
+                        val isAnswer = idx == benarIdx
                         DragChip(
                             item = items[idx],
                             fallbackColor = ChipFallbackColors[pos % ChipFallbackColors.size],
@@ -313,8 +338,7 @@ internal fun MatchScreen(
                                     solved || !dropRect.contains(center) -> false
                                     isAnswer -> {
                                         solved = true
-                                        if (round == items.lastIndex) timerRunning = false
-                                        reactCorrect()
+                                        if (round == rounds.lastIndex) timerRunning = false
                                         true
                                     }
                                     else -> { flashWrong = true; mistakes++; reactWrong(); false }
@@ -406,4 +430,18 @@ private fun DragChip(
             )
         }
     }
+}
+private class Ronde(val benar: LearnItem, val opsi: List<LearnItem>, val soal: SoalKuis)
+
+/** Mengubah soal dari database menjadi data yang dipakai tampilan. Kosong kalau ada yang tidak cocok. */
+private fun bangunRonde(soal: List<SoalKuis>, items: List<LearnItem>): List<Ronde> {
+    val hasil = soal.mapNotNull { s ->
+        val opsi = s.pilihan.map { p ->
+            items.firstOrNull { it.chipText == p.nilai } ?: return@mapNotNull null
+        }
+        val idxBenar = s.pilihan.indexOfFirst { it.apakahBenar }
+        if (idxBenar < 0) return@mapNotNull null
+        Ronde(opsi[idxBenar], opsi, s)
+    }
+    return if (hasil.size == soal.size) hasil else emptyList()
 }

@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -40,10 +39,6 @@ import com.example.tesprojek.ui.components.ScreenVoice
 import com.example.tesprojek.ui.theme.SkyBlue
 import com.example.tesprojek.ui.components.GameBackground
 import com.example.tesprojek.ui.components.SwayingGrass
-import com.example.tesprojek.ui.screens.Clouds
-import com.example.tesprojek.ui.screens.DriftingCloud
-import com.example.tesprojek.ui.screens.enter
-import com.example.tesprojek.ui.screens.rememberEntrance
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -82,7 +77,9 @@ internal fun ScoreScreen(
     onSoundToggle: (Boolean) -> Unit = {},
     onMenuClick: () -> Unit = {},
     onReplayClick: () -> Unit = {},
-    onNextClick: () -> Unit = {}
+    onNextClick: () -> Unit = {},
+    rekorBintang: Int? = null,
+    rekorDetik: Int = 0
 ) {
     val (title, praise) = when (stars) {
         3 -> "Menakjubkan" to "Hebat!"
@@ -90,7 +87,7 @@ internal fun ScoreScreen(
         else -> "Ayo Coba Lagi" to "Semangat!"
     }
     // Suara hasil: 2-3 bintang -> "Yeay, kamu berhasil"; 1 bintang -> "Tetap semangat, coba main lagi ya!"
-    ScreenVoice(name = if (stars >= 2) "skor_berhasil" else "skor_semangat", enabled = soundOn)
+    ScreenVoice(name = if (stars >= 2) "skor_berhasil" else "skor_semangat", enabled = true)
 
     BoxWithConstraints(
         modifier
@@ -156,6 +153,10 @@ internal fun ScoreScreen(
                     ScoreText(praise, u, 20f)
                     Spacer(Modifier.height(u * 14))
                     ScoreText("Waktu : ${formatTime(seconds)}", u, 20f)
+                    if (rekorBintang != null) {
+                        Spacer(Modifier.height(u * 10))
+                        ScoreText("Rekor : $rekorBintang bintang, ${formatTime(rekorDetik)}", u, 16f)
+                    }
                 }
             }
 

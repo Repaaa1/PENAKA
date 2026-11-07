@@ -83,6 +83,7 @@ import com.example.tesprojek.ui.theme.TitleYellow
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.example.tesprojek.ui.components.ClickSound
 
 @Composable
 fun GameScreen(
@@ -148,7 +149,7 @@ private fun PlayButton(
     val tilt by loopState(-2f, 2f, 1900, label = "playTilt")
 
     BouncyButton(
-        onClick = onClick,
+        onClick = { ClickSound.play(); onClick() },
         modifier = modifier
             .size(width = width, height = width * 0.866f)
             .graphicsLayer {
