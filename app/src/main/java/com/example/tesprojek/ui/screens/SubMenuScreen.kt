@@ -24,6 +24,7 @@ import com.example.tesprojek.ui.components.ScreenVoice
 import com.example.tesprojek.ui.components.GameBackground
 import com.example.tesprojek.ui.components.PenakaTopBar
 import com.example.tesprojek.ui.components.SwayingGrass
+import com.example.tesprojek.ui.theme.Fredoka
 import com.example.tesprojek.ui.theme.SkyBlue
 
 /**
@@ -40,8 +41,8 @@ internal enum class SubMenuKind(
 ) {
     Letters(
         title = "Huruf",
-        learnLabel = "Huruf",
-        matchLabel = "Mencocokan Huruf",
+        learnLabel = "Mengenal Huruf",
+        matchLabel = "Mencocokkan Huruf",
         learnImage = R.drawable.balok_huruf,
         boardImage = R.drawable.papan_huruf,
         layout = SceneLayout(
@@ -52,8 +53,8 @@ internal enum class SubMenuKind(
     ),
     Numbers(
         title = "Angka",
-        learnLabel = "Angka",
-        matchLabel = "Mencocokan Angka",
+        learnLabel = "Mengenal Angka",
+        matchLabel = "Mencocokkan Angka",
         learnImage = R.drawable.balok_angka,
         boardImage = R.drawable.papan_angka,
         layout = SceneLayout(
@@ -159,14 +160,10 @@ private fun PageTitle(text: String, u: Dp, modifier: Modifier = Modifier) {
         text = text,
         modifier = modifier,
         style = TextStyle(
-            color = Color.White,
+            color = Color(0xFF6B4423),
             fontSize = (u.value * 22f).sp,
-            fontWeight = FontWeight.Bold,
-            shadow = Shadow(
-                color = Color(0x66124A7A),
-                offset = Offset(0f, 3f),
-                blurRadius = 6f
-            )
+            fontFamily = Fredoka,
+            fontWeight = FontWeight.Bold
         )
     )
 }

@@ -31,7 +31,7 @@ internal enum class LearnKind(
     val fixedLabel: String, val items: List<LearnItem>) {
     Letters(
         title = "Mengenal Huruf",
-        matchTitle = "Cocokan Huruf",
+        matchTitle = "Mencocokkan Huruf",
         dragHint = "(tarik huruf)",
         fixedLabel = "Huruf",
         items = listOf(
@@ -46,7 +46,7 @@ internal enum class LearnKind(
     ),
     Numbers(
         title = "Mengenal Angka",
-        matchTitle = "Cocokan Angka",
+        matchTitle = "Mencocokkan Angka",
         dragHint = "(tarik angka)",
         fixedLabel = "Angka",
         items = listOf(

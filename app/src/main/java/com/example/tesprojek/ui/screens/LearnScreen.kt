@@ -63,12 +63,19 @@ import com.example.tesprojek.ui.theme.SkyBlue
 import com.example.tesprojek.ui.components.GameBackground
 import com.example.tesprojek.ui.components.SwayingGrass
 import com.example.tesprojek.ui.components.LearnItem
+import com.example.tesprojek.ui.theme.Fredoka
 
 
 internal val LearnCardOutline = Color(0xFF8A5A2B)
 internal val LearnPillFill = Color(0xFFFFF8D6)
 internal val LearnPillOutline = Color(0xFF4A3426)
 private val LearnArrow = Color(0xFF7A4A28)
+
+/** Nama angka 1..10 untuk pil di bawah kartu angka pada halaman Mengenal Angka. */
+private val NamaAngka = listOf(
+    "Satu", "Dua", "Tiga", "Empat", "Lima",
+    "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh"
+)
 
 /** Dekorasi halaman Mengenal: tanpa pohon & sarang, ada bunga di kiri. */
 internal val LearnScene = SceneLayout(
@@ -133,9 +140,10 @@ internal fun LearnScreen(
                 Text(
                     text = kind.title,
                     modifier = Modifier.align(Alignment.Center),
-                    color = Color.Black,
+                    color = Color(0xFF6B4423),
                     fontSize = (u.value * 22f).sp,
-                    fontWeight = FontWeight.Normal
+                    fontFamily = Fredoka,
+                    fontWeight = FontWeight.Bold
                 )
             },
             startIcon = { buttonSize -> BackArrowIcon(Modifier.size(buttonSize * 0.5f)) }
@@ -154,7 +162,7 @@ internal fun LearnScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(u * 106)) {
                     // ketuk huruf -> bunyi hurufnya (suara_huruf_a); ketuk benda -> nama bendanya (suara_benda_a)
                     LearnCard(
-                        u, kind.fixedLabel, 124f,
+                        u, "${kind.fixedLabel} ${item.chipText}", 124f,
                         onClick = { VoiceOver.play(context, "suara_${item.glyphName}") }
                     ) {
                         LearnImage(item.glyphName, item.glyphText, u, 70f)
@@ -169,7 +177,7 @@ internal fun LearnScreen(
                     }
                 }
             } else {
-                LearnCard(u, kind.fixedLabel, 124f, onClick = replayOpenVoice) {
+                LearnCard(u, NamaAngka.getOrElse(i) { kind.fixedLabel }, 124f, onClick = replayOpenVoice) {
                     LearnImage(item.glyphName, item.glyphText, u, 70f)
                 }
             }

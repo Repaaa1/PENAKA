@@ -62,6 +62,7 @@ import kotlinx.coroutines.launch
 import com.example.tesprojek.data.SoalKuis
 import com.example.tesprojek.ui.components.playAndAwait
 import com.example.tesprojek.ui.components.BouncyButton
+import com.example.tesprojek.ui.theme.Fredoka
 
 private val MatchCorrect = Color(0xFF6BB84A)
 private val MatchWrong = Color(0xFFE8402F)
@@ -157,9 +158,10 @@ internal fun MatchScreen(
                 Text(
                     text = kind.matchTitle,
                     modifier = Modifier.align(Alignment.Center),
-                    color = Color.Black,
+                    color = Color(0xFF6B4423),
                     fontSize = (u.value * 22f).sp,
-                    fontWeight = FontWeight.Normal
+                    fontFamily = Fredoka,
+                    fontWeight = FontWeight.Bold
                 )
             },
             startIcon = { buttonSize -> BackArrowIcon(Modifier.size(buttonSize * 0.5f)) }
