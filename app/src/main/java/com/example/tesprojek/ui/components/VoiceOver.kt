@@ -10,6 +10,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 /**
  * Suara pengantar (rekaman sendiri) di res/raw. Satu suara pada satu waktu; suara baru
@@ -18,8 +20,14 @@ import androidx.lifecycle.LifecycleEventObserver
 object VoiceOver {
     private var player: MediaPlayer? = null
     private var currentName: String? = null
+    private var onDone: (() -> Unit)? = null
 
-    fun play(context: Context, name: String, fallback: String? = null) {
+    fun play(
+        context: Context,
+        name: String,
+        fallback: String? = null,
+        onComplete: (() -> Unit)? = null
+    ) {
         stop()
         val app = context.applicationContext
         var resId = app.resources.getIdentifier(name, "raw", app.packageName)
@@ -28,26 +36,54 @@ object VoiceOver {
             resId = app.resources.getIdentifier(fallback, "raw", app.packageName)
             played = fallback
         }
-        if (resId == 0) return
+        if (resId == 0) { onComplete?.invoke(); return }
+
+        val mp = MediaPlayer.create(app, resId)
+        if (mp == null) { onComplete?.invoke(); return }
+
         currentName = played
-        player = MediaPlayer.create(app, resId)?.apply {
-            setOnCompletionListener { mp ->
-                if (player === mp) player = null
-                runCatching { mp.release() }
+        onDone = onComplete
+        player = mp.apply {
+            setOnCompletionListener { done ->
+                if (player === done) player = null
+                runCatching { done.release() }
+                val cb = onDone
+                onDone = null
+                cb?.invoke()
+            }
+            setOnErrorListener { done, _, _ ->
+                if (player === done) player = null
+                runCatching { done.release() }
+                val cb = onDone
+                onDone = null
+                cb?.invoke()
+                true
             }
             start()
         }
     }
 
     fun stop() {
+        onDone = null
         player?.let { runCatching { it.stop() }; runCatching { it.release() } }
         player = null
         currentName = null
     }
 
-    /** Hentikan hanya kalau yang sedang diputar adalah [name] (supaya layar lama tidak memotong suara layar baru). */
     fun stopIf(name: String?) {
         if (name != null && name == currentName) stop()
+    }
+}
+
+suspend fun VoiceOver.playAndAwait(
+    context: Context,
+    name: String,
+    fallback: String? = null
+) = suspendCancellableCoroutine<Unit> { cont ->
+    play(context, name, fallback) { if (cont.isActive) cont.resume(Unit) }
+    cont.invokeOnCancellation {
+        stopIf(name)
+        stopIf(fallback)
     }
 }
 

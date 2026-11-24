@@ -61,18 +61,21 @@ import com.example.tesprojek.ui.components.ScreenVoice
 import com.example.tesprojek.ui.components.VoiceOver
 import com.example.tesprojek.ui.theme.SkyBlue
 import com.example.tesprojek.ui.components.GameBackground
-import com.example.tesprojek.ui.components.PenakaTopBar
 import com.example.tesprojek.ui.components.SwayingGrass
-import com.example.tesprojek.ui.screens.BackArrowIcon
-import com.example.tesprojek.ui.screens.Clouds
-import com.example.tesprojek.ui.screens.DriftingCloud
-import com.example.tesprojek.ui.screens.MenuDecorations
-import com.example.tesprojek.ui.screens.SceneLayout
+import com.example.tesprojek.ui.components.LearnItem
+import com.example.tesprojek.ui.theme.Fredoka
+
 
 internal val LearnCardOutline = Color(0xFF8A5A2B)
 internal val LearnPillFill = Color(0xFFFFF8D6)
 internal val LearnPillOutline = Color(0xFF4A3426)
 private val LearnArrow = Color(0xFF7A4A28)
+
+/** Nama angka 1..10 untuk pil di bawah kartu angka pada halaman Mengenal Angka. */
+private val NamaAngka = listOf(
+    "Satu", "Dua", "Tiga", "Empat", "Lima",
+    "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh"
+)
 
 /** Dekorasi halaman Mengenal: tanpa pohon & sarang, ada bunga di kiri. */
 internal val LearnScene = SceneLayout(
@@ -91,10 +94,15 @@ internal fun LearnScreen(
     modifier: Modifier = Modifier,
     soundOn: Boolean = true,
     onBackClick: () -> Unit = {},
-    onSoundToggle: (Boolean) -> Unit = {}
+    onSoundToggle: (Boolean) -> Unit = {},
+    items: List<LearnItem> = kind.items
 ) {
     var index by rememberSaveable(kind) { mutableIntStateOf(0) }
-    val items = kind.items
+    if (items.isEmpty()) {
+        // Materi belum selesai dimuat: tampilkan langit kosong sebentar
+        Box(modifier.fillMaxSize().background(SkyBlue))
+        return
+    }
 
     BoxWithConstraints(
         modifier
@@ -111,8 +119,8 @@ internal fun LearnScreen(
         val glyph = items[index].glyphName
         val openVoice = if (isLetters) "suara_untuk_${glyph.removePrefix("huruf_")}" else "suara_$glyph"
         val openFallback = if (isLetters) "suara_$glyph" else null
-        ScreenVoice(name = openVoice, enabled = soundOn, fallback = openFallback)
-        val replayOpenVoice = { if (soundOn) VoiceOver.play(context, openVoice, openFallback) }
+        ScreenVoice(name = openVoice, enabled = true, fallback = openFallback)
+        val replayOpenVoice = { VoiceOver.play(context, openVoice, openFallback) }
 
         GameBackground(Modifier.fillMaxSize())
         SwayingGrass(Modifier.fillMaxSize())
@@ -132,9 +140,10 @@ internal fun LearnScreen(
                 Text(
                     text = kind.title,
                     modifier = Modifier.align(Alignment.Center),
-                    color = Color.Black,
+                    color = Color(0xFF6B4423),
                     fontSize = (u.value * 22f).sp,
-                    fontWeight = FontWeight.Normal
+                    fontFamily = Fredoka,
+                    fontWeight = FontWeight.Bold
                 )
             },
             startIcon = { buttonSize -> BackArrowIcon(Modifier.size(buttonSize * 0.5f)) }
@@ -153,22 +162,22 @@ internal fun LearnScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(u * 106)) {
                     // ketuk huruf -> bunyi hurufnya (suara_huruf_a); ketuk benda -> nama bendanya (suara_benda_a)
                     LearnCard(
-                        u, kind.fixedLabel, 124f,
-                        onClick = { if (soundOn) VoiceOver.play(context, "suara_${item.glyphName}") }
+                        u, "${kind.fixedLabel} ${item.chipText}", 124f,
+                        onClick = { VoiceOver.play(context, "suara_${item.glyphName}") }
                     ) {
                         LearnImage(item.glyphName, item.glyphText, u, 70f)
                     }
                     LearnCard(
                         u, item.phrase, 170f,
                         onClick = {
-                            if (soundOn) VoiceOver.play(context, "suara_benda_${item.glyphName.removePrefix("huruf_")}")
+                            VoiceOver.play(context, "suara_benda_${item.glyphName.removePrefix("huruf_")}")
                         }
                     ) {
                         LearnImage(item.objectName, item.label, u, 24f)
                     }
                 }
             } else {
-                LearnCard(u, kind.fixedLabel, 124f, onClick = replayOpenVoice) {
+                LearnCard(u, NamaAngka.getOrElse(i) { kind.fixedLabel }, 124f, onClick = replayOpenVoice) {
                     LearnImage(item.glyphName, item.glyphText, u, 70f)
                 }
             }

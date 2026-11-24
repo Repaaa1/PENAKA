@@ -14,18 +14,12 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,13 +28,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -51,7 +43,6 @@ import com.example.tesprojek.R
 import com.example.tesprojek.ui.components.ScreenVoice
 import com.example.tesprojek.ui.components.BouncyButton
 import com.example.tesprojek.ui.components.ClickSound
-import com.example.tesprojek.ui.components.SpeakerIcon
 import com.example.tesprojek.ui.components.PenakaTopBar
 import com.example.tesprojek.ui.theme.OutlineBrown
 import com.example.tesprojek.ui.theme.SkyBlue
@@ -59,14 +50,6 @@ import com.example.tesprojek.ui.components.Butterfly
 import com.example.tesprojek.ui.components.GameBackground
 import com.example.tesprojek.ui.components.HoneyJar
 import com.example.tesprojek.ui.components.SwayingGrass
-import com.example.tesprojek.ui.screens.Clouds
-import com.example.tesprojek.ui.screens.DecoImage
-import com.example.tesprojek.ui.screens.DriftingCloud
-import com.example.tesprojek.ui.screens.OutBack
-import com.example.tesprojek.ui.screens.TWO_PI
-import com.example.tesprojek.ui.screens.enter
-import com.example.tesprojek.ui.screens.loopState
-import com.example.tesprojek.ui.screens.rememberEntrance
 import kotlin.math.sin
 
 private val CardOutline = Color(0xFF8A5A2B)

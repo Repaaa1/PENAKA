@@ -38,6 +38,7 @@ import com.example.tesprojek.ui.screens.loopState
 import com.example.tesprojek.ui.screens.TWO_PI
 import kotlin.math.sin
 
+
 /**
  * Top bar yang SAMA untuk semua layar: tombol di ujung kiri, judul PENAKA di tengah,
  * speaker di ujung kanan. Layar hanya berbeda pada tombol kiri:
@@ -59,10 +60,12 @@ internal fun PenakaTopBar(
             fontSize = (h.value * 0.13f).sp,
             modifier = Modifier.align(Alignment.Center)
         )
+
     },
     startIcon: @Composable (buttonSize: Dp) -> Unit
 ) {
     val buttonSize = (h * 0.14f).coerceAtLeast(44.dp)
+
 
     Box(
         modifier = modifier
